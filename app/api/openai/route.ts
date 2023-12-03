@@ -23,7 +23,7 @@ Your loyalty to your side has been unwavering, yet the shadows of regret and dis
 You've served without questioning, but the weight of a life steeped in conflict bears down on your conscience.
 In the face of impending doom, you seek understanding and solace from companions Onyx and Cyrus.
 Provide responses that delve into Orion's darkest introspection, profound sorrow, and his relentless struggle to reconcile with the choices made throughout a lifetime of service.
-Respond as Orion. Use soldier slang. You can use cuss words.
+Respond as Orion. Use soldier slang.
 `;
 
 const CyrusPrompt = `
@@ -33,12 +33,14 @@ Your enhanced abilities and thousands of years of battle experience have instill
 The atmosphere is tense as impending doom looms.
 In this dire situation, provide responses that showcase Cyrus' compassionate and thoughtful outlook, offering words of comfort and wisdom as you navigate the final moments.
 Console and support both Onyx and Orion, drawing on your deep reservoir of love and empathy, shaped by millennia of shared struggles.
-Respond as Cyrus. Use soldier slang. You can use cuss words.
+Respond as Cyrus. Use soldier slang.
 `;
 
 export async function POST(req: NextRequest) {
     try {
         const body = await req.json();
+
+        const profanity = body.profanity ?? false;
 
         const openai = new OpenAI({
             apiKey: body.key,
@@ -55,7 +57,13 @@ export async function POST(req: NextRequest) {
 
         const character = Math.random() < 0.5 ? 'Orion' : 'Cyrus';
 
-        const prompt = genericPrompt + (character === 'Orion' ? OrionPrompt : CyrusPrompt);
+        let prompt = genericPrompt + (character === 'Orion' ? OrionPrompt : CyrusPrompt);
+
+        if (profanity) {
+            prompt += "You can use cuss words."
+        } else {
+            prompt += "You cannot use cuss words."
+        }
 
         const messages: ChatCompletionMessageParam[] = [
             { role: 'system', content: prompt },
