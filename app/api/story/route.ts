@@ -40,6 +40,7 @@ export async function POST(req: NextRequest) {
         const messages: ChatCompletionMessageParam[] = [
             { role: 'system', content: StoryPrompt },
             { role: 'system', content: UserPrompt },
+            { role: 'user', content: body.seed }
         ];
 
         const response = await openai.chat.completions.create({
