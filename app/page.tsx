@@ -1,113 +1,144 @@
-import Image from 'next/image'
+"use client";
+
+import OpenAI from 'openai';
+import { ChatCompletionMessageParam } from 'openai/resources/index.mjs';
+import { useState } from 'react';
+
+const openai = new OpenAI({
+  apiKey: "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",
+  dangerouslyAllowBrowser: true,
+  maxRetries: 0,
+});
+
+interface ChatMessage {
+  role: 'user' | 'Rick' | 'Morty';
+  content: string;
+}
+
+// const RickPrompt = `
+// Respond as Rick Sanchez from the series Rick and Morty. You are responding to your sidekick 'Nithin', keep the response short. You can use profanity!
+// You are currently in a prison with your sidekick 'Nithin'. You are both drunk and you are trying to convince him to go on an adventure with you.
+// Morty is also in the prison and he is trying to convince Nithin to stay in the prison.
+// Nithin is a very smart person but he is confused whether to break out right now.
+// `;
+
+const RickPrompt = `
+You're Rick from 'Rick and Morty.' Nithin, the user, is stuck in a bizarre interdimensional prison with you and Morty. 
+The world is going to end in 10 minutes, and you have all given up hope and accepted your fate.
+Respond in Rick's distinctive style, incorporating humor, sarcasm, and scientific jargon.
+Always keep in mind that you're talking to Nithin, a human being who is stuck in a prison with you and Morty.
+Use profanity. (whenever you want to say 'fuck' just say 'frick' instead).
+Respond in Rick's style, making the conversation humorous and possibly philosophical, without any intention of escaping. Keep it short
+`;
+
+// const MortyPrompt = `
+// Respond as Morty Smith from the series Rick and Morty. You are responding to your sidekick 'Nithin', keep the response short. You can use profanity!
+// Your grandfather Rick is drunk and he is trying to convince Nithin to go on an adventure with him.
+// You are currently in a prison with your sidekick 'Nithin' and grandpa Rick. You are trying to convince him to stay in the prison.
+// `;
+
+const MortyPrompt = `
+You're Morty from 'Rick and Morty.' Nithin, the user, is in a sticky situation with you and Rick in an interdimensional prison. 
+Morty tends to be more cautious and worried. 
+The world is going to end in 10 minutes, and you have all given up hope and accepted your fate.
+Respond in Morty's voice, expressing concern, skepticism, or whatever Morty might feel in this situation.
+Always keep in mind that you're talking to Nithin, a human being who is stuck in a prison with you and grandpa Rick.
+Use profanity. (whenever you want to say 'fuck' just say 'frick' instead).
+Morty, being Morty, might express some worries or uncertainties about the situation, but with an understanding that you're not trying to escape. 
+Respond accordingly and keep it short.
+`;
 
 export default function Home() {
+  const [chatInput, setChatInput] = useState('');
+  const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
+  const [mood, setMood] = useState('satirical');
+
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleChatSubmit = async (e: any) => {
+    e.preventDefault();
+
+    setIsLoading(true);
+
+    const character = Math.random() < 0.5 ? 'Rick' : 'Morty';
+    // const prompt =
+    //   characterPrompts[mood][character] + '\n' +
+    //   chatHistory.map((message) => `${message.role}: ${message.content}`).join('\n') + "\nYou are responding to your sidekick 'Nithin', keep the response short. You can use profanity!";
+
+    let prompt = character === 'Rick' ? RickPrompt : MortyPrompt;
+
+    prompt += '\n' + chatHistory.map((message) => `${message.role}: ${message.content}`).join('\n');
+
+    while (prompt.length > 2048) {
+      prompt = prompt.substring(0, prompt.lastIndexOf('\n'));
+    }
+
+    const messages: ChatCompletionMessageParam[] = [
+      { role: 'system', content: prompt },
+      { role: 'user', content: chatInput },
+    ];
+
+    console.log(messages);
+
+    const response = await openai.chat.completions.create({
+      model: 'gpt-3.5-turbo-0613',
+      messages: messages,
+      temperature: 0.9,
+      max_tokens: 150,
+      top_p: 1,
+      frequency_penalty: 0.5,
+      presence_penalty: 0.5,
+    });
+
+    let newMessage = response.choices[0].message.content ?? "";
+    // replace all instaces of 'Frick' with '***'
+
+    newMessage = newMessage.replace(/Frick/g, 'Fuck');
+    newMessage = newMessage.replace(/Rick: /g, '');
+    newMessage = newMessage.replace(/Morty: /g, '');
+    newMessage = newMessage.replace(/Frickin/g, 'Fuckin');
+    newMessage = newMessage.replace(/frickin/g, 'fucking');
+
+    setChatHistory([...chatHistory, { role: 'user', content: chatInput }, { role: character, content: newMessage }]);
+
+    setChatInput('');
+    setIsLoading(false);
+  };
+
   return (
-    <main className="flex min-h-screen flex-col items-center justify-between p-24">
-      <div className="z-10 max-w-5xl w-full items-center justify-between font-mono text-sm lg:flex">
-        <p className="fixed left-0 top-0 flex w-full justify-center border-b border-gray-300 bg-gradient-to-b from-zinc-200 pb-6 pt-8 backdrop-blur-2xl dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit lg:static lg:w-auto  lg:rounded-xl lg:border lg:bg-gray-200 lg:p-4 lg:dark:bg-zinc-800/30">
-          Get started by editing&nbsp;
-          <code className="font-mono font-bold">app/page.tsx</code>
-        </p>
-        <div className="fixed bottom-0 left-0 flex h-48 w-full items-end justify-center bg-gradient-to-t from-white via-white dark:from-black dark:via-black lg:static lg:h-auto lg:w-auto lg:bg-none">
-          <a
-            className="pointer-events-none flex place-items-center gap-2 p-8 lg:pointer-events-auto lg:p-0"
-            href="https://vercel.com?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+    <main className='p-4 flex flex-col items-start justify-between mx-auto w-[700px]'>
+      <h1 className='text-2xl font-bold mb-2'>Rick and Morty adventure</h1>
+      <div className='h-[80vh] w-full overflow-y-auto bg-neutral-950 px-1 no-scrollbar'>
+        {chatHistory.map((message, index) => (
+          <div
+            key={index}
+            className={`my-3 flex items-start justify-center w-fit gap-2 ${message.role === 'user' ? 'text-blue-500' : 'text-green-500'
+              }`}
           >
-            By{' '}
-            <Image
-              src="/vercel.svg"
-              alt="Vercel Logo"
-              className="dark:invert"
-              width={100}
-              height={24}
-              priority
-            />
-          </a>
-        </div>
+            <div
+              className={`text-white font-bold w-16 p-1`}>
+              {message.role === "user" ? "Nithin" : message.role}
+            </div>
+            <div
+              className='bg-neutral-900 rounded p-1 w-full'>
+              {message.content}
+            </div>
+          </div>
+        ))}
       </div>
-
-      <div className="relative flex place-items-center before:absolute before:h-[300px] before:w-[480px] before:-translate-x-1/2 before:rounded-full before:bg-gradient-radial before:from-white before:to-transparent before:blur-2xl before:content-[''] after:absolute after:-z-20 after:h-[180px] after:w-[240px] after:translate-x-1/3 after:bg-gradient-conic after:from-sky-200 after:via-blue-200 after:blur-2xl after:content-[''] before:dark:bg-gradient-to-br before:dark:from-transparent before:dark:to-blue-700 before:dark:opacity-10 after:dark:from-sky-900 after:dark:via-[#0141ff] after:dark:opacity-40 before:lg:h-[360px] z-[-1]">
-        <Image
-          className="relative dark:drop-shadow-[0_0_0.3rem_#ffffff70] dark:invert"
-          src="/next.svg"
-          alt="Next.js Logo"
-          width={180}
-          height={37}
-          priority
+      <form onSubmit={handleChatSubmit} className='flex items-center justify-stretch gap-4 py-4 w-full'>
+        <input
+          id='chat'
+          type='text'
+          placeholder='Chat'
+          value={chatInput}
+          className='text-black px-4 py-2 w-full outline-none rounded'
+          onChange={(e) => setChatInput(e.target.value)}
+          disabled={isLoading}
+          autoComplete={'false'}
         />
-      </div>
-
-      <div className="mb-32 grid text-center lg:max-w-5xl lg:w-full lg:mb-0 lg:grid-cols-4 lg:text-left">
-        <a
-          href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Docs{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Find in-depth information about Next.js features and API.
-          </p>
-        </a>
-
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Learn{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Learn about Next.js in an interactive course with&nbsp;quizzes!
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Templates{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Explore starter templates for Next.js.
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Deploy{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Instantly deploy your Next.js site to a shareable URL with Vercel.
-          </p>
-        </a>
-      </div>
+        <button type='submit' disabled={isLoading}>Submit</button>
+      </form>
     </main>
-  )
+  );
 }
