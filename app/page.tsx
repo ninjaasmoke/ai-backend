@@ -5,7 +5,7 @@ import { ChatCompletionMessageParam } from 'openai/resources/index.mjs';
 import { useState } from 'react';
 
 const openai = new OpenAI({
-  apiKey: "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",
+  apiKey: "",
   dangerouslyAllowBrowser: true,
   maxRetries: 0,
 });
