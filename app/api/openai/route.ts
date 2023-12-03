@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from 'openai';
 import { ChatCompletionMessageParam } from "openai/resources/index.mjs";
+import cors from "./cors";
 
 export async function GET(req: NextRequest) {
     const json = {
@@ -73,19 +74,18 @@ export async function POST(req: NextRequest) {
         const output = response.choices[0].message.content;
 
         const headers = {
-            "Access-Control-Allow-Origin": "*", // Allow requests from any origin
-            "Access-Control-Allow-Methods": "GET, POST", // Allow GET and POST requests
-            "Access-Control-Allow-Headers": "Content-Type", // Allow Content-Type header
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type, Authorization',
         };
 
-        return new Response(JSON.stringify({
-            output: output,
-            character: character
-        }), {
-            headers: headers,
-            status: 200,
-            statusText: "OK",
-        });
+        return cors(req, new Response(
+            JSON.stringify({
+                output: output,
+                character: character,
+            }),
+            { headers }
+        ));
 
     } catch (e: any) {
         let error_response = {
@@ -93,10 +93,18 @@ export async function POST(req: NextRequest) {
             message: e.message
         };
 
-        return new Response(JSON.stringify(error_response), {
-            headers: { "Content-Type": "application/json" },
-            status: 500,
-            statusText: "Internal Server Error",
-        });
+        return cors(req, new Response(
+            JSON.stringify(error_response),
+            { status: 500, headers: { "Content-Type": "application/json" } }
+        ));
     }
+}
+
+export async function OPTIONS(request: Request) {
+    return cors(
+        request,
+        new Response(null, {
+            status: 204,
+        })
+    );
 }
