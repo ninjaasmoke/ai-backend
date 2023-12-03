@@ -37,7 +37,6 @@ Respond as Cyrus.
 
 export async function POST(req: NextRequest) {
     try {
-
         const body = await req.json();
 
         const openai = new OpenAI({
@@ -73,18 +72,31 @@ export async function POST(req: NextRequest) {
 
         const output = response.choices[0].message.content;
 
-        return NextResponse.json({
+        const headers = {
+            "Access-Control-Allow-Origin": "*", // Allow requests from any origin
+            "Access-Control-Allow-Methods": "GET, POST", // Allow GET and POST requests
+            "Access-Control-Allow-Headers": "Content-Type", // Allow Content-Type header
+        };
+
+        return new Response(JSON.stringify({
             output: output,
             character: character
+        }), {
+            headers: headers,
+            status: 200,
+            statusText: "OK",
         });
 
-    }
-    catch (e: any) {
+    } catch (e: any) {
         let error_response = {
             status: "error",
             message: e.message
         };
 
-        return NextResponse.json(error_response, { status: 500 });
+        return new Response(JSON.stringify(error_response), {
+            headers: { "Content-Type": "application/json" },
+            status: 500,
+            statusText: "Internal Server Error",
+        });
     }
 }
